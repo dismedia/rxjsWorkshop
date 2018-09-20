@@ -1,6 +1,7 @@
 import {TestBed, async} from '@angular/core/testing';
-import {from, noop, Observable, Observer, of, empty, EMPTY} from "rxjs";
-import {filter, map, mergeMap, scan, tap} from "rxjs/operators";
+import {from, noop, Observable, Observer, of, EMPTY} from "rxjs";
+import {filter, map, mergeMap, scan, skip, tap} from "rxjs/operators";
+import {GameClickAction, gameCreator, GameRules} from "./targetClick";
 
 
 const logObserver: Observer<any> = {
@@ -18,15 +19,19 @@ describe('target click flow', () => {
 
     const rules: GameRules = {
       distanceToScore: (a) => 1,
-      minDistance:4
+      minDistance: 4,
+      container: null,
+      howToMoveTheTarget:null
+
     }
 
 
-    const platformCreator = () => () => of({clickDistance:1} as GameClickAction)
+    const platformCreator = () => () => of({clickDistance: 1} as GameClickAction)
 
     gameCreator(rules, platformCreator).subscribe((a) => {
 
       expect(a).toBeTruthy();
+      expect(a.score).toBeTruthy()
       done()
     })
 
@@ -38,7 +43,9 @@ describe('target click flow', () => {
 
     const rules: GameRules = {
       distanceToScore: (a) => 1,
-      minDistance:4
+      minDistance: 4,
+      container: null,
+      howToMoveTheTarget:null
     };
 
 
@@ -47,102 +54,37 @@ describe('target click flow', () => {
       return EMPTY
     };
 
-    gameCreator(rules, platformCreator).subscribe((a) => {})
+    gameCreator(rules, platformCreator).subscribe((a) => {
+    })
 
   });
 
-  it('should add score to platform on every click', (done) => {
+  it('should add score to platform on every click in distance range', (done) => {
 
 
     const rules: GameRules = {
       distanceToScore: (a) => a,
-      minDistance:10
+      minDistance: 10,
+      container: null,
+      howToMoveTheTarget:null
     };
 
 
     const platformCreator = (p) => () => {
 
-      return from([1,100,5])
-        .pipe(map(a=>({clickDistance:a})))
+      return from([1, 100, 5])
+        .pipe(map(a => ({clickDistance: a})))
     };
 
-    gameCreator(rules, platformCreator).subscribe((a) => {
+    gameCreator(rules, platformCreator).pipe(skip(1)).subscribe((a) => {
 
-      console.log(a)
-    },noop,()=>done())
+      expect(a.score).toEqual(6)
+
+    }, noop, () => done())
 
   });
-
-
 
 
 })
 
 
-
-interface GameRules {
-
-  minDistance:number
-  distanceToScore(distance: number): number
-
-}
-
-interface GameResults {
-
-}
-
-interface GameState {
-
-  score: number;
-
-}
-
-interface RenderState{
-  position:{x:number,y:number}
-}
-
-interface GameClickAction {
-  clickDistance:number
-}
-
-
-interface GamePlatform {
-  (state: Observable<RenderState>): Observable<GameClickAction>
-
-}
-
-interface GamePlatformCreator {
-  (gameParams: GameRules): GamePlatform
-}
-
-interface GameCreator {
-  (params: GameRules, platformCreator: GamePlatformCreator): Observable<GameResults>
-}
-
-
-const gameCreator: GameCreator = (rules, creator) => {
-
-
-  const initialState:GameState={
-    score:0
-  }
-
-  let renderState:Observable<RenderState>
-
-  const platform: GamePlatform = creator(rules)
-
-  return platform(renderState).pipe(
-
-    filter((a)=>a.clickDistance<rules.minDistance),
-    scan((acc:GameState,clickAction:GameClickAction)=>{
-
-      return {
-        score:acc.score+rules.distanceToScore(clickAction.clickDistance)
-
-      }as GameState
-    },initialState)
-  )
-
-
-  //return of({} as GameResults)
-}
