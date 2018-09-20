@@ -21,7 +21,7 @@ export interface GameState {
 
 export interface TargetState{
   position:{x:number,y:number}
-  showTarget:boolean
+
 }
 
 export interface GameClickAction {
